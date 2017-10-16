@@ -17,41 +17,59 @@
  */
 package com.axelor.app;
 
+import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Calendar;
 import java.util.Properties;
 
+import org.apache.commons.lang.StringUtils;
+
 import com.axelor.app.internal.AppFilter;
 import com.axelor.common.ClassUtils;
-import com.axelor.common.StringUtils;
+import com.google.common.base.Throwables;
 
 public final class AppSettings {
 
 	private static final String DEFAULT_CONFIG_LOCATION = "application.properties";
 	private static final String CUSTOM_CONFIG_LOCATION = "axelor.config";
 
-	private Properties properties;
+	private Properties properties = new Properties();
 
 	private static AppSettings instance;
 
 	private AppSettings() {
+		loadFromResource(DEFAULT_CONFIG_LOCATION);
+		
 		String config = System.getProperty(CUSTOM_CONFIG_LOCATION);
-		InputStream stream = null;
+		if (!StringUtils.isBlank(config))
+			load(new File(config));
+	}
+
+	private void load(InputStream stream) {
 		try {
-			if (StringUtils.isBlank(config)) {
-				stream = ClassUtils.getResourceStream(config = DEFAULT_CONFIG_LOCATION);
-			} else {
-				stream = new FileInputStream(config);
-			}
-			try {
-				properties = new Properties();
-				properties.load(stream);
-			} finally {
-				stream.close();
-			}
-		} catch (Exception e) {
-			throw new RuntimeException("Unable to load application settings: " + config);
+			properties.load(stream);
+		} catch (IOException e) {
+			Throwables.propagate(e);
+		}
+	}
+
+	private void load(File file) {
+		try {
+			load(new FileInputStream(file));
+		} catch (FileNotFoundException e) {
+			Throwables.propagate(e);
+		}
+	}
+
+	private void loadFromResource(String resourcePath) {
+		try (InputStream stream =  ClassUtils.getResourceStream(resourcePath))
+		{
+			load(stream);
+		} catch (IOException e) {
+			Throwables.propagate(e);
 		}
 	}
 
